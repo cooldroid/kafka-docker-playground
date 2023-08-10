@@ -13902,7 +13902,7 @@ playground_run_command() {
     fi
   fi
   set +e
-  playground container kill-all
+  # playground container kill-all
   set -e
   playground state set run.connector_type "$(get_connector_type | tr -d '\n')"
   playground state set run.test_file "$test_file"
@@ -13955,10 +13955,10 @@ playground_run_command() {
       fi
     elif [ "$connector_type" == "$CONNECTOR_TYPE_ONPREM" ] || [ "$connector_type" == "$CONNECTOR_TYPE_SELF_MANAGED" ]
     then
-      playground connector status
+      sleep 1 #playground connector status
     fi
 
-    playground open-docs --only-show-url
+    # playground open-docs --only-show-url
 
     if [ "$connector_type" == "$CONNECTOR_TYPE_ONPREM" ] || [ "$connector_type" == "$CONNECTOR_TYPE_SELF_MANAGED" ]
     then

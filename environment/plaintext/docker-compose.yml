@@ -9,14 +9,17 @@ services:
     restart: always
     volumes:
       - ../../environment/plaintext/jmx-exporter:/usr/share/jmx_exporter/
+      - ../../target/${KTYPE}/zk-data:/var/lib/zookeeper/data
+      - ../../target/${KTYPE}/zk-txn-logs:/var/lib/zookeeper/log
     ports:
+      - "2181:2181"
       - "9999:9999"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
       KAFKA_JMX_PORT: 9999
       EXTRA_ARGS: ${GRAFANA_AGENT_ZK}
-      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_JMX_HOSTNAME: zookeeper
       # for 5.4.x:
       KAFKA_OPTS: -Dzookeeper.4lw.commands.whitelist=*
       PYROSCOPE_APPLICATION_NAME: "zookeeper"
@@ -32,7 +35,7 @@ services:
       - "10000:10000"
     environment:
       KAFKA_JMX_PORT: 10000
-      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_JMX_HOSTNAME: broker
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: BROKER:PLAINTEXT,HOST:PLAINTEXT
@@ -40,12 +43,14 @@ services:
       KAFKA_ADVERTISED_LISTENERS: BROKER://broker:9092,HOST://localhost:29092
       KAFKA_INTER_BROKER_LISTENER_NAME: BROKER
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_SUPPORT_METRICS_ENABLE: 'false'
+      CONFLUENT_REPORTERS_TELEMETRY_AUTO_ENABLE: 'false'
       CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
       # Confluent Metrics Reporter for Control Center Cluster Monitoring
-      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      #KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
       CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker:9092
       CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
-      CONFLUENT_METRICS_ENABLE: 'true'
+      CONFLUENT_METRICS_ENABLE: 'false'
       # for 5.4.x:
       KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
       # for 6.0.0
@@ -61,6 +66,7 @@ services:
       PYROSCOPE_SERVER_ADDRESS: "http://pyroscope:4040"
     volumes:
       - ../../environment/plaintext/jmx-exporter:/usr/share/jmx_exporter/
+      - ../../target/${KTYPE}/kafka-1-data:/var/lib/kafka/data
 
   broker2:
     image: ${CP_KAFKA_IMAGE}:${TAG}
@@ -82,12 +88,14 @@ services:
       KAFKA_ADVERTISED_LISTENERS: BROKER://broker2:9092,HOST://localhost:29292
       KAFKA_INTER_BROKER_LISTENER_NAME: BROKER
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_SUPPORT_METRICS_ENABLE: 'false'
+      CONFLUENT_REPORTERS_TELEMETRY_AUTO_ENABLE: 'false'
       CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
       # Confluent Metrics Reporter for Control Center Cluster Monitoring
-      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      #KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
       CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker2:9092
       CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
-      CONFLUENT_METRICS_ENABLE: 'true'
+      CONFLUENT_METRICS_ENABLE: 'false'
       # for 5.4.x:
       KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
       # for 6.0.0
@@ -103,6 +111,7 @@ services:
       PYROSCOPE_SERVER_ADDRESS: "http://pyroscope:4040"
     volumes:
       - ../../environment/plaintext/jmx-exporter:/usr/share/jmx_exporter/
+      - ../../target/plaintext/kafka-2-data:/var/lib/kafka/data
 
   broker3:
     image: ${CP_KAFKA_IMAGE}:${TAG}
@@ -124,12 +133,14 @@ services:
       KAFKA_ADVERTISED_LISTENERS: BROKER://broker3:9092,HOST://localhost:29392
       KAFKA_INTER_BROKER_LISTENER_NAME: BROKER
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_SUPPORT_METRICS_ENABLE: 'false'
+      CONFLUENT_REPORTERS_TELEMETRY_AUTO_ENABLE: 'false'
       CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
       # Confluent Metrics Reporter for Control Center Cluster Monitoring
-      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      #KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
       CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker3:9092
       CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
-      CONFLUENT_METRICS_ENABLE: 'true'
+      CONFLUENT_METRICS_ENABLE: 'false'
       # for 5.4.x:
       KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
       # for 6.0.0
@@ -145,8 +156,7 @@ services:
       PYROSCOPE_SERVER_ADDRESS: "http://pyroscope:4040"
     volumes:
       - ../../environment/plaintext/jmx-exporter:/usr/share/jmx_exporter/
-
-
+      - ../../target/plaintext/kafka-3-data:/var/lib/kafka/data
 
   schema-registry:
     image: confluentinc/cp-schema-registry:${TAG}
@@ -162,7 +172,7 @@ services:
       - ../../environment/plaintext/jmx-exporter:/usr/share/jmx_exporter/
     environment:
       SCHEMA_REGISTRY_JMX_PORT: 10001
-      SCHEMA_REGISTRY_JMX_HOSTNAME: localhost
+      SCHEMA_REGISTRY_JMX_HOSTNAME: schema-registry
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: broker:9092
@@ -188,6 +198,8 @@ services:
       - "5005:5005"
       - "8083:8083"
       - "10002:10002"
+    profiles:
+      - "connect"
     volumes:
       - ../../environment/plaintext/jmx-exporter:/usr/share/jmx_exporter/
       - ../../confluent-hub:/usr/share/confluent-hub-components

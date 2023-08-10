@@ -1,4 +1,5 @@
 DIR_UTILS="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+source ${DIR_UTILS}/../environment/plaintext/.env
 source ${DIR_UTILS}/../scripts/cli/src/lib/utils_function.sh
 
 # Setting up TAG environment variable

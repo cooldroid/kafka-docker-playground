@@ -40,10 +40,15 @@ services:
       - zookeeper-europe
       - broker-metrics
       - zookeeper-metrics
+    ports:
+      - "29093:29093"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper-europe:2181'
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker-europe:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker-europe:9092,EXTERNAL_SAME_HOST://localhost:29093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,EXTERNAL_SAME_HOST://:29093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL_SAME_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
       # Confluent Metrics Reporter for Control Center Cluster Monitoring
@@ -68,10 +73,15 @@ services:
       - zookeeper-us
       - broker-metrics
       - zookeeper-metrics
+    ports:
+      - "29092:29092"
     environment:
       KAFKA_BROKER_ID: 2
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper-us:2181'
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker-us:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker-us:9092,EXTERNAL_SAME_HOST://localhost:29092
+      KAFKA_LISTENERS: PLAINTEXT://:9092,EXTERNAL_SAME_HOST://:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL_SAME_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
       # Confluent Metrics Reporter for Control Center Cluster Monitoring
@@ -259,3 +269,20 @@ services:
       CONTROL_CENTER_SCHEMA_REGISTRY_EUROPE_URL: "http://schema-registry-europe:8081"
       # starting from 7.0
       # CONTROL_CENTER_MODE_ENABLE: management
+
+  kafka-ui:
+    image: openjdk:17-jdk-alpine
+    hostname: kafka-ui
+    container_name: kafka-ui
+    depends_on:
+      - connect-us
+      - connect-europe
+    ports:
+      - "8082:8082"
+    command: >
+        java --add-opens java.rmi/javax.rmi.ssl=ALL-UNNAMED -Dspring.profiles.active=docker-mdc -Dspring.config.additional-location=/kafka-ui/config.yml 
+        -jar /kafka-ui/kafka-ui-api/target/kafka-ui-api-0.0.1-SNAPSHOT.jar
+    stop_signal: SIGTERM
+    volumes:
+      - /Users/dt224530/projects/github/kafka-ui:/kafka-ui:z
+      - /Users/dt224530/projects/github/kafka-docker-playground/environment/sasl-ssl/security:/Users/dt224530/projects/github/kafka-docker-playground/environment/sasl-ssl/security:z

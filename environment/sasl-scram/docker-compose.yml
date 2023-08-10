@@ -10,6 +10,8 @@ services:
     zookeeper:
         volumes:
         - ../../environment/sasl-scram/zookeeper/zookeeper.sasl.jaas.config:/etc/kafka/zookeeper_server_jaas.conf
+        - ../../target/sasl-scram/zk-data:/var/lib/zookeeper/data
+        - ../../target/sasl-scram/zk-txn-logs:/var/lib/zookeeper/log
         environment:
             KAFKA_OPTS: -Djava.security.auth.login.config=/etc/kafka/zookeeper_server_jaas.conf
                 -Dzookeeper.authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider
@@ -20,20 +22,26 @@ services:
         volumes:
             - ../../environment/sasl-scram/kafka/kafka.jaas.conf:/etc/kafka/kafka_server_jaas.conf
             - ../../environment/sasl-scram/client.properties:/tmp/client.properties
+            - ../../target/sasl-scram/kafka-1-data:/var/lib/kafka/data
         depends_on:
         - zookeeper
         environment:
-            KAFKA_LISTENERS: SASL_PLAINTEXT://:9092
-            KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: SASL_PLAINTEXT:SASL_PLAINTEXT
-            KAFKA_ADVERTISED_LISTENERS: SASL_PLAINTEXT://broker:9092
-            KAFKA_SASL_ENABLED_MECHANISMS: SCRAM-SHA-256
-            KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: SCRAM-SHA-256
-            KAFKA_INTER_BROKER_LISTENER_NAME: SASL_PLAINTEXT
-            CONFLUENT_METRICS_REPORTER_SASL_MECHANISM: SCRAM-SHA-256
-            CONFLUENT_METRICS_REPORTER_SECURITY_PROTOCOL: SASL_PLAINTEXT
-            CONFLUENT_METRICS_REPORTER_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.scram.ScramLoginModule required \
-                username=\"client\" \
-                password=\"client-secret\";"
+            KAFKA_LISTENERS: INTERNAL://:9092,PLAINTEXT_HOST://:29092
+            KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:SASL_PLAINTEXT,PLAINTEXT_HOST:SASL_PLAINTEXT
+            KAFKA_ADVERTISED_LISTENERS: INTERNAL://broker:9092,PLAINTEXT_HOST://localhost:29092
+            KAFKA_SASL_ENABLED_MECHANISMS: SCRAM-SHA-512
+            KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: SCRAM-SHA-512
+            KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+            KAFKA_AUTHORIZER_CLASS_NAME: $KAFKA_AUTHORIZER_CLASS_NAME
+            KAFKA_ZOOKEEPER_SET_ACL: "true"
+            KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "false"
+            KAFKA_SUPER_USERS: User:admin;User:broker;User:schema-client1;User:client;User:connect
+            #KAFKA_LOG4J_LOGGERS: "kafka.authorizer.logger=DEBUG,kafka.controller=INFO"
+            #CONFLUENT_METRICS_REPORTER_SASL_MECHANISM: SCRAM-SHA-512
+            #CONFLUENT_METRICS_REPORTER_SECURITY_PROTOCOL: SASL_PLAINTEXT
+            #CONFLUENT_METRICS_REPORTER_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.scram.ScramLoginModule required \
+            #    username=\"client\" \
+            #    password=\"client-secret\";"
             KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/kafka_server_jaas.conf"
 
     broker2:
@@ -159,8 +167,8 @@ services:
         depends_on:
         - zookeeper
         environment:
-            # Configure the Connect workers to use SASL/SCRAM-SHA-256.
-            CONNECT_SASL_MECHANISM: SCRAM-SHA-256
+            # Configure the Connect workers to use SASL/SCRAM-SHA-512.
+            CONNECT_SASL_MECHANISM: SCRAM-SHA-512
             CONNECT_SECURITY_PROTOCOL: SASL_PLAINTEXT
             # JAAS
             CONNECT_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.scram.ScramLoginModule required \
@@ -171,21 +179,21 @@ services:
             CONNECT_PRODUCER_CONFLUENT_MONITORING_INTERCEPTOR_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.scram.ScramLoginModule required \
                 username=\"connect\" \
                 password=\"connect-secret\";"
-            CONNECT_PRODUCER_CONFLUENT_MONITORING_INTERCEPTOR_SASL_MECHANISM: SCRAM-SHA-256
+            CONNECT_PRODUCER_CONFLUENT_MONITORING_INTERCEPTOR_SASL_MECHANISM: SCRAM-SHA-512
             # consumer
             CONNECT_CONSUMER_CONFLUENT_MONITORING_INTERCEPTOR_SECURITY_PROTOCOL: SASL_PLAINTEXT
             CONNECT_CONSUMER_CONFLUENT_MONITORING_INTERCEPTOR_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.scram.ScramLoginModule required \
                 username=\"connect\" \
                 password=\"connect-secret\";"
-            CONNECT_CONSUMER_CONFLUENT_MONITORING_INTERCEPTOR_SASL_MECHANISM: SCRAM-SHA-256
+            CONNECT_CONSUMER_CONFLUENT_MONITORING_INTERCEPTOR_SASL_MECHANISM: SCRAM-SHA-512
             # producer
-            CONNECT_PRODUCER_SASL_MECHANISM: SCRAM-SHA-256
+            CONNECT_PRODUCER_SASL_MECHANISM: SCRAM-SHA-512
             CONNECT_PRODUCER_SECURITY_PROTOCOL: SASL_PLAINTEXT
             CONNECT_PRODUCER_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.scram.ScramLoginModule required \
                 username=\"connect\" \
                 password=\"connect-secret\";"
             # consumer
-            CONNECT_CONSUMER_SASL_MECHANISM: SCRAM-SHA-256
+            CONNECT_CONSUMER_SASL_MECHANISM: SCRAM-SHA-512
             CONNECT_CONSUMER_SECURITY_PROTOCOL: SASL_PLAINTEXT
             CONNECT_CONSUMER_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.scram.ScramLoginModule required \
                 username=\"connect\" \
@@ -196,15 +204,15 @@ services:
             - ../../environment/sasl-scram/client.properties:/tmp/client.properties
         environment:
             SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: SASL_PLAINTEXT
-            SCHEMA_REGISTRY_KAFKASTORE_SASL_MECHANISM: SCRAM-SHA-256
+            SCHEMA_REGISTRY_KAFKASTORE_SASL_MECHANISM: SCRAM-SHA-512
             SCHEMA_REGISTRY_KAFKASTORE_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.scram.ScramLoginModule required \
-                username=\"schemaregistry\" \
-                password=\"schemaregistry-secret\";"
+                username=\"schema-client1\" \
+                password=\"schema1-secret\";"
 
     ksqldb-server:
         environment:
             KSQL_SECURITY_PROTOCOL: SASL_PLAINTEXT
-            KSQL_SASL_MECHANISM: SCRAM-SHA-256
+            KSQL_SASL_MECHANISM: SCRAM-SHA-512
             KSQL_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.scram.ScramLoginModule required \
                 username=\"ksqldb\" \
                 password=\"ksqldb-secret\";"
@@ -213,13 +221,13 @@ services:
             KSQL_PRODUCER_CONFLUENT_MONITORING_INTERCEPTOR_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.scram.ScramLoginModule required \
                 username=\"ksqldb\" \
                 password=\"ksqldb-secret\";"
-            KSQL_PRODUCER_CONFLUENT_MONITORING_INTERCEPTOR_SASL_MECHANISM: SCRAM-SHA-256
+            KSQL_PRODUCER_CONFLUENT_MONITORING_INTERCEPTOR_SASL_MECHANISM: SCRAM-SHA-512
             # consumer
             KSQL_CONSUMER_CONFLUENT_MONITORING_INTERCEPTOR_SECURITY_PROTOCOL: SASL_PLAINTEXT
             KSQL_CONSUMER_CONFLUENT_MONITORING_INTERCEPTOR_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.scram.ScramLoginModule required \
                 username=\"ksqldb\" \
                 password=\"ksqldb-secret\";"
-            KSQL_CONSUMER_CONFLUENT_MONITORING_INTERCEPTOR_SASL_MECHANISM: SCRAM-SHA-256
+            KSQL_CONSUMER_CONFLUENT_MONITORING_INTERCEPTOR_SASL_MECHANISM: SCRAM-SHA-512
 
     control-center:
         environment:
@@ -227,15 +235,39 @@ services:
             CONTROL_CENTER_STREAMS_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.scram.ScramLoginModule required \
                 username=\"client\" \
                 password=\"client-secret\";"
-            CONTROL_CENTER_STREAMS_SASL_MECHANISM: SCRAM-SHA-256
+            CONTROL_CENTER_STREAMS_SASL_MECHANISM: SCRAM-SHA-512
 
             CONTROL_CENTER_KAFKA_MYCLUSTER_SECURITY_PROTOCOL: SASL_PLAINTEXT
             CONTROL_CENTER_KAFKA_MYCLUSTER_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.scram.ScramLoginModule required \
                 username=\"client\" \
                 password=\"client-secret\";"
-            CONTROL_CENTER_KAFKA_MYCLUSTER_SASL_MECHANISM: SCRAM-SHA-256
+            CONTROL_CENTER_KAFKA_MYCLUSTER_SASL_MECHANISM: SCRAM-SHA-512
 
     # https://github.com/conduktor/conduktor-platform/blob/main/doc/Configuration.md
     conduktor:
         volumes:
             - ../../environment/sasl-scram/conduktor/platform-config.yaml:/tmp/platform-config.yaml
+
+    lenses:
+        image: lensesio/lenses:${LENSES_VER}
+        hostname: lenses
+        container_name: lenses
+        depends_on:
+        - broker
+        profiles:
+            - "lenses"
+        environment:
+            EULA: "https://licenses.lenses.io/d/?id=bc9dd193-7f6e-11ed-8f1e-42010af01003"
+            LENSES_PORT: 9991
+            LENSES_SECURITY_USER: admin
+            LENSES_SECURITY_PASSWORD: sha256:8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
+        ports:
+            - 9991:9991
+            - 9102:9102
+        volumes:
+            - ../../target/plaintext/lenses-data/kafka-streams-state:/data/kafka-streams-state
+            - ../../target/plaintext/lenses-data/log:/data/log
+            - ../../target/plaintext/lenses-data/plugins:/data/plugins
+            - ../../target/plaintext/lenses-data/storage:/data/storage
+            - ../../target/plaintext/lenses-data/lenses.conf:/mnt/settings/lenses.conf
+            - ../../target/plaintext/lenses-data/security.conf:/mnt/secrets/security.conf
