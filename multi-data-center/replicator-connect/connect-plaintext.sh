@@ -5,7 +5,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 source ${DIR}/../../scripts/utils.sh
 
 ${DIR}/../../environment/mdc-plaintext/start.sh "$PWD/docker-compose.mdc-plaintext.yml"
-
+sleep 120
 log "Sending sales in Europe cluster"
 
 seq -f "european_sale_%g ${RANDOM}" 10 | docker container exec -i connect-europe bash -c "export CLASSPATH=/usr/share/java/monitoring-interceptors/monitoring-interceptors-${TAG_BASE}.jar; kafka-console-producer --broker-list broker-europe:9092 --topic sales_EUROPE --producer-property interceptor.classes=io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor --producer-property confluent.monitoring.interceptor.bootstrap.servers=broker-metrics:9092"
@@ -33,7 +33,7 @@ curl -X PUT \
           "provenance.header.enable": true,
           "topic.whitelist": "sales_EUROPE"
           }' \
-     http://localhost:8083/connectors/replicate-europe-to-us/config | jq .
+     http://connect-us:8083/connectors/replicate-europe-to-us/config | jq .
 
 
 log "Consolidating all sales in Europe"
@@ -55,9 +55,9 @@ curl -X PUT \
           "provenance.header.enable": true,
           "topic.whitelist": "sales_US"
           }' \
-     http://localhost:8083/connectors/replicate-us-to-europe/config | jq .
+     http://connect-europe:8083/connectors/replicate-us-to-europe/config | jq .
 
-sleep 120
+sleep 60
 
 log "Verify we have received the data in all the sales_ topics in EUROPE"
 docker container exec -i connect-europe bash -c "export CLASSPATH=/usr/share/java/monitoring-interceptors/monitoring-interceptors-${TAG_BASE}.jar; kafka-console-consumer --bootstrap-server broker-europe:9092 --whitelist 'sales_.*' --from-beginning --max-messages 20 --property metadata.max.age.ms 30000 --consumer-property interceptor.classes=io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor --consumer-property confluent.monitoring.interceptor.bootstrap.servers=broker-metrics:9092"

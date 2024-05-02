@@ -10,6 +10,7 @@ if ! version_gt $TAG_BASE "5.3.99"; then
 fi
 
 ${DIR}/../../environment/mdc-plaintext/start.sh "${PWD}/docker-compose.mdc-plaintext.yml"
+sleep 90
 
 log "Sending sales in Europe cluster"
 seq -f "european_sale_%g ${RANDOM}" 10 | docker container exec -i broker-europe kafka-console-producer --broker-list localhost:9092 --topic sales_EUROPE
@@ -24,8 +25,8 @@ docker exec -d connect-us bash -c '/usr/bin/connect-mirror-maker /etc/kafka/conn
 
 # docker exec connect-us bash -c '/usr/bin/connect-mirror-maker /etc/kafka/connect-mirror-maker.properties'
 
-log "sleeping 120 seconds"
-sleep 120
+log "sleeping 60 seconds"
+sleep 60
 
 # Topic Renaming
 
